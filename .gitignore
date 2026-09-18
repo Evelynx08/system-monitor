@@ -1,0 +1,32 @@
+# La compilación de Rust genera cientos de artefactos dependientes de la máquina.
+/src-tauri/target/
+
+# Salidas habituales de Tauri y del empaquetado local.
+/src-tauri/dist/
+/build/
+/dist/
+/pkg/
+/*.pkg.tar.*
+
+# Dependencias o cachés que se pueden reconstruir desde los manifiestos.
+/node_modules/
+/.cargo/
+/.cache/
+
+# Configuración local y posibles secretos; el repositorio solo debe contener
+# plantillas públicas, nunca credenciales de una máquina concreta.
+.env
+.env.*
+!.env.example
+*.local
+
+# Residuos del editor, del sistema y de ejecuciones locales.
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.log
+

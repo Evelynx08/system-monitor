@@ -1,0 +1,71 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "com.bookos.systemmonitor",
+  "productName": "bookos-system-monitor",
+  "mainBinaryName": "bookos-system-monitor",
+  "version": "0.1.0",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "../src"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "/usr/share/icons/**",
+          "/usr/share/pixmaps/**",
+          "/var/lib/flatpak/exports/share/icons/**",
+          "$HOME/.local/share/icons/**",
+          "$HOME/.local/share/flatpak/exports/share/icons/**"
+        ]
+      }
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Monitor del Sistema",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 900,
+        "minHeight": 560,
+        "decorations": false,
+        "transparent": true,
+        "resizable": true,
+        "visible": false,
+        "zoomHotkeysEnabled": false
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "icon": [
+      "icons/icon.png"
+    ],
+    "targets": [
+      "deb",
+      "rpm"
+    ],
+    "publisher": "BookOS",
+    "category": "Utility",
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0"
+        ],
+        "desktopTemplate": "linux/desktop.hbs"
+      },
+      "rpm": {
+        "depends": [
+          "webkit2gtk4.1",
+          "gtk3"
+        ],
+        "desktopTemplate": "linux/desktop.hbs"
+      }
+    }
+  }
+}

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Monitor del Sistema</title>
+<link rel="stylesheet" href="style.css">
+<script src="bookos-palette.js"></script>
+<script src="locales.js"></script>
+<script src="i18n.js"></script>
+</head>
+<!-- Sin data-i18n-title en body ni en controles con etiqueta visible: i18n.js
+     lo convierte en atributo title y WebKit enseña ese tooltip al pasar el
+     cursor por cualquier parte. Los nombres accesibles van por aria-labelledby.
+     Iconos: Lucide 1.46.0, copia local en BookOS-HIG/lucide/icons. -->
+<body>
+<div class="ventana" id="ventana">
+  <header class="titlebar" data-tauri-drag-region>
+    <div class="tb-controles">
+      <button type="button" class="tb-btn" id="btn-min" data-i18n-title="wm.minimize">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/></svg>
+      </button>
+      <button type="button" class="tb-btn" id="btn-max" data-i18n-title="wm.maximize">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+      </button>
+      <button type="button" class="tb-btn tb-cerrar" id="btn-cerrar" data-i18n-title="wm.close">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="cuerpo">
+    <aside class="sidebar">
+      <h1 class="app-titulo" data-i18n="app.title">Monitor del Sistema</h1>
+
+      <label class="buscador">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        <input type="search" id="buscar" autocomplete="off" spellcheck="false" data-i18n-ph="search.ph">
+      </label>
+
+      <nav class="card nav" id="nav"></nav>
+
+      <h2 class="section-header" data-i18n="settings.title">Ajustes</h2>
+      <div class="card">
+        <div class="fila fila-control">
+          <span class="fila-titulo" id="et-intervalo" data-i18n="settings.interval">Actualizar cada</span>
+          <span class="sel-caja">
+            <select class="sel" id="ajuste-intervalo" aria-labelledby="et-intervalo">
+              <option value="1000">1 s</option>
+              <option value="2000">2 s</option>
+              <option value="5000">5 s</option>
+            </select>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </span>
+        </div>
+        <div class="fila">
+          <span class="fila-texto">
+            <span class="fila-titulo" id="et-paleta" data-i18n="settings.palette">Color dinámico</span>
+            <span class="fila-sub" data-i18n="settings.palette_sub">Colores del fondo de pantalla</span>
+          </span>
+          <button type="button" class="toggle" id="ajuste-paleta" role="switch" aria-checked="true" aria-labelledby="et-paleta"><span class="toggle-thumb"></span></button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="detalle" id="detalle">
+      <header class="cabecera">
+        <h2 class="titulo-pagina" id="titulo"></h2>
+        <p class="subtitulo-pagina" id="subtitulo"></p>
+      </header>
+
+      <section class="card hero" id="hero">
+        <div class="hero-grafica">
+          <div class="leyenda" id="leyenda"></div>
+          <div class="lienzo" id="lienzo">
+            <canvas id="grafica" role="img"></canvas>
+            <div class="cruz" id="cruz" hidden></div>
+            <div class="tooltip" id="tooltip" hidden></div>
+          </div>
+        </div>
+        <dl class="cifras" id="cifras"></dl>
+        <p class="vacio" id="vacio" hidden></p>
+      </section>
+
+      <div id="extra"></div>
+      <div id="fijo"></div>
+
+      <div class="lista-cabecera" id="lista-cabecera">
+        <h3 class="section-header" id="lista-titulo" data-i18n="list.processes">Procesos</h3>
+        <div class="chips" id="chips" role="tablist"></div>
+        <button type="button" class="btn-pildora" id="btn-filtros" aria-expanded="false" aria-controls="panel-filtros">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></svg>
+          <span data-i18n="filters.button">Filtros</span>
+        </button>
+        <button type="button" class="btn-peligro" id="btn-finalizar" hidden>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+          <span data-i18n="action.end">Finalizar proceso</span>
+        </button>
+      </div>
+
+      <div class="filtros-activos" id="filtros-activos" hidden></div>
+
+      <section class="panel-filtros" id="panel-filtros" aria-labelledby="filtros-titulo" hidden>
+        <h4 class="panel-titulo" id="filtros-titulo" data-i18n="filters.title_groups">Servicios y aplicaciones</h4>
+        <input type="search" class="panel-buscar" id="filtros-buscar" autocomplete="off" spellcheck="false" data-i18n-ph="filters.search_ph">
+        <div class="filtros-lista" id="filtros-lista" role="group" aria-labelledby="filtros-titulo"></div>
+        <div class="panel-fila">
+          <span class="fila-texto">
+            <span class="fila-titulo" id="et-activos" data-i18n="filters.active">Solo con actividad</span>
+            <span class="fila-sub" data-i18n="filters.active_sub">Oculta los procesos en reposo</span>
+          </span>
+          <button type="button" class="toggle" id="filtro-activos" role="switch" aria-checked="false" aria-labelledby="et-activos"><span class="toggle-thumb"></span></button>
+        </div>
+        <div class="panel-fila">
+          <span class="fila-texto">
+            <span class="fila-titulo" id="et-mios" data-i18n="filters.mine">Solo mis procesos</span>
+            <span class="fila-sub" data-i18n="filters.mine_sub">Oculta los de otros usuarios y los del sistema</span>
+          </span>
+          <button type="button" class="toggle" id="filtro-mios" role="switch" aria-checked="false" aria-labelledby="et-mios"><span class="toggle-thumb"></span></button>
+        </div>
+        <div class="panel-pie" id="filtros-pie" hidden>
+          <button type="button" class="btn-secundario" id="filtros-quitar" data-i18n="filters.clear">Quitar filtros</button>
+        </div>
+      </section>
+
+      <p class="nota" id="nota" hidden></p>
+      <section class="card tabla" id="tabla" role="treegrid" aria-labelledby="lista-titulo">
+        <div class="tabla-cabecera" id="tabla-cabecera" role="row"></div>
+        <div class="tabla-cuerpo" id="tabla-cuerpo"></div>
+        <p class="tabla-vacia" id="tabla-vacia" hidden></p>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="dialogo-titulo" aria-describedby="dialogo-msg">
+    <h2 class="dialogo-titulo" id="dialogo-titulo"></h2>
+    <p class="dialogo-msg" id="dialogo-msg"></p>
+    <div class="dialogo-fila">
+      <span class="fila-texto">
+        <span class="fila-titulo" id="et-forzar" data-i18n="dialog.force">Forzar el cierre</span>
+        <span class="fila-sub" data-i18n="dialog.force_sub">Para procesos que no responden</span>
+      </span>
+      <button type="button" class="toggle" id="dialogo-forzar" role="switch" aria-checked="false" aria-labelledby="et-forzar"><span class="toggle-thumb"></span></button>
+    </div>
+    <div class="dialogo-botones">
+      <button type="button" class="dbtn dbtn-cancelar" id="dialogo-cancelar" data-i18n="dialog.cancel">Cancelar</button>
+      <button type="button" class="dbtn dbtn-peligro" id="dialogo-aceptar" data-i18n="dialog.end">Finalizar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="main.js"></script>
+</body>
+</html>

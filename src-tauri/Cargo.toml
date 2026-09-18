@@ -1,0 +1,35 @@
+[package]
+name = "bookos-system-monitor"
+version = "0.1.0"
+description = "Monitor del Sistema de BookOS"
+authors = ["BookOS"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# protocol-asset: los iconos de las aplicaciones se sirven desde /usr/share/icons
+# sin copiarlos ni pasarlos por IPC.
+tauri = { version = "2", features = ["protocol-asset"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Sin "multithread": rayon levanta un hilo por núcleo que se queda vivo toda la
+# vida de la app, y aquí se lee /proc una vez cada pocos segundos.
+sysinfo = { version = "0.33", default-features = false, features = ["system", "disk", "network"] }
+
+# Para apagar el zoom por pellizco de WebKitGTK (ver main.rs). Es la misma
+# versión que ya arrastra tauri: no añade nada al árbol, solo la hace visible.
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "z"
+panic = "abort"
