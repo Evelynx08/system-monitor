@@ -139,6 +139,8 @@ window.BOOKOS_I18N = {
     "gpu.no_usage_sub": "El controlador solo informa del uso con esta sección abierta",
 
     "ram.used": "Usada",
+    "ram.installed": "Instalada",
+    "ram.usable": "Utilizable",
     "ram.cache": "En caché",
     "ram.available": "Disponible",
     "ram.compressed": "Comprimida",
@@ -391,6 +393,8 @@ window.BOOKOS_I18N = {
     "gpu.no_usage_sub": "This driver only reports usage while this section is open",
 
     "ram.used": "Used",
+    "ram.installed": "Installed",
+    "ram.usable": "Usable",
     "ram.cache": "Cached",
     "ram.available": "Available",
     "ram.compressed": "Compressed",

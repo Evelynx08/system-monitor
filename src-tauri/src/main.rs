@@ -4,6 +4,7 @@ mod bateria;
 mod energia;
 mod gpu;
 mod hardware;
+mod isla;
 mod procesos;
 mod sensores;
 mod sistema;
@@ -187,6 +188,25 @@ fn desactivar_zoom_por_pellizco<R: tauri::Runtime>(
     });
 }
 
+#[tauri::command]
+fn bookos_language() -> String {
+    let locale = std::env::var("LANG").unwrap_or_else(|_| "en".into());
+    let Some(home) = std::env::var_os("HOME") else {
+        return if locale.to_lowercase().starts_with("es") { "es" } else { "en" }.into();
+    };
+    let path = std::path::PathBuf::from(home).join(".config/bookos/settings.json");
+    let language = std::fs::read_to_string(path)
+        .ok()
+        .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
+        .and_then(|settings| settings.get("AppLanguage").and_then(|value| value.as_str()).map(str::to_owned));
+    match language.as_deref() {
+        Some("es") => "es".into(),
+        Some("en") => "en".into(),
+        _ if locale.to_lowercase().starts_with("es") => "es".into(),
+        _ => "en".into(),
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .on_page_load(desactivar_zoom_por_pellizco)
@@ -210,6 +230,7 @@ fn main() {
                     let _ = ventana.show();
                 }
             });
+            isla::publicar_en_bucle(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -221,9 +242,15 @@ fn main() {
             cambiar_perfil,
             historial_bateria,
             tema_sistema,
+            bookos_language,
             idioma_sistema,
             bookos_palette_css
         ])
-        .run(tauri::generate_context!())
-        .expect("error al arrancar la aplicación");
+        .build(tauri::generate_context!())
+        .expect("error al arrancar la aplicación")
+        .run(|_, evento| {
+            if matches!(evento, tauri::RunEvent::Exit) {
+                isla::cerrar();
+            }
+        });
 }

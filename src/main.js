@@ -76,6 +76,7 @@ function bytes(n, base = 1024) {
   while (n >= base && i < unidades.length - 1) { n /= base; i++; }
   return `${(i === 0 || n >= 100 ? f0 : f1).format(n)} ${unidades[i]}`;
 }
+const ramInstalada = () => estado.hardware?.ram.modulos.reduce((suma, m) => suma + m.bytes, 0) || null;
 const ritmo = (n) => `${bytes(n, 1000)}/s`;
 function duracion(seg) {
   const d = Math.floor(seg / 86400);
@@ -265,10 +266,14 @@ function pintarNav() {
           valor = g && g.uso != null ? pct(g.uso) : '—';
           break;
         }
-        case 'ram':
-          sub = `${bytes(r.ram.usada)} ${t('ram.of', { total: bytes(r.ram.total) })}`;
+        case 'ram': {
+          const instalada = ramInstalada();
+          sub = instalada != null
+            ? `${bytes(instalada)} ${t('ram.installed').toLowerCase()}`
+            : `${bytes(r.ram.usada)} ${t('ram.of', { total: bytes(r.ram.total) })}`;
           valor = pct((r.ram.usada / r.ram.total) * 100);
           break;
+        }
         case 'disco': {
           const raiz = r.disco.volumenes.find((v) => v.punto_montaje === '/') || r.disco.volumenes[0];
           sub = raiz ? t('disk.free', { free: bytes(raiz.disponible, 1000), total: bytes(raiz.total, 1000) }) : '';
@@ -609,15 +614,18 @@ function pintarPagina() {
     }
     case 'ram': {
       const m = r.ram;
+      const instalada = ramInstalada();
       const lista = [
+        [t('ram.usable'), bytes(m.total)],
         [t('ram.used'), bytes(m.usada)],
         [t('ram.cache'), bytes(m.cache)],
         [t('ram.available'), bytes(m.disponible)],
       ];
+      if (instalada != null) lista.unshift([t('ram.installed'), bytes(instalada)]);
       if (m.comprimida != null) lista.push([t('ram.compressed'), bytes(m.comprimida)]);
       lista.push([t('ram.swap'), `${bytes(m.swap_usada)} ${t('ram.of', { total: bytes(m.swap_total) })}`]);
       if (m.presion != null) lista.push([t('ram.pressure'), pct(m.presion)]);
-      pintarCifras({ etiqueta: t('ram.used'), valor: bytes(m.usada), sub: t('ram.of', { total: bytes(m.total) }) }, lista);
+      pintarCifras({ etiqueta: t('ram.used'), valor: bytes(m.usada), sub: `${bytes(m.total)} ${t('ram.usable').toLowerCase()}` }, lista);
 
       // Composición: usada, caché y libre. Cada tramo lleva su valor en la
       // leyenda de abajo; el color nunca va solo.
@@ -1213,6 +1221,8 @@ function pintarFijo() {
 
 async function cargarHardware() {
   estado.hardware = await invoke('hardware');
+  pintarNav();
+  if (estado.seccion === 'ram') pintarPagina();
   if (estado.seccion !== 'bateria') pintarFijo();
 }
 
@@ -1892,7 +1902,7 @@ document.addEventListener('visibilitychange', () => {
 
 async function iniciar() {
   // locales.js solo trae español e inglés; cualquier otro idioma cae en español.
-  const idioma = await invoke('idioma_sistema');
+  const idioma = await invoke('bookos_language');
   i18n.setLang(idioma.toLowerCase().startsWith('en') ? 'en' : 'es');
   prepararFormatos();
   etiquetasSinTooltip();

@@ -175,7 +175,7 @@ impl Procesos {
         let mut grupos: HashMap<usize, Vec<Proceso>> = HashMap::new();
         for p in procesos {
             let pid = p.pid().as_u32();
-            let indice = catalogo.indice(pid, p.start_time());
+            let indice = catalogo.indice(p, &self.sys);
             let disco = p.disk_usage();
             let por_segundo = |bytes: u64| {
                 if segundos_disco > 0.0 {
@@ -252,7 +252,9 @@ impl Procesos {
 }
 
 impl Catalogo {
-    fn indice(&mut self, pid: u32, arranque: u64) -> usize {
+    fn indice(&mut self, proceso: &Process, sys: &System) -> usize {
+        let pid = proceso.pid().as_u32();
+        let arranque = proceso.start_time();
         if let Some(&(a, i)) = self.por_pid.get(&pid) {
             if a == arranque {
                 return i;
@@ -260,6 +262,11 @@ impl Catalogo {
         }
         let cgroup = fs::read_to_string(format!("/proc/{pid}/cgroup")).unwrap_or_default();
         let unidad = clasificar(&cgroup);
+        let unidad = if unidad.clase == Clase::Aplicacion && buscar_desktop(&unidad.id).is_some() {
+            unidad
+        } else {
+            aplicacion_ancestral(proceso, sys).unwrap_or(unidad)
+        };
         let i = match self.por_unidad.get(&unidad.clave) {
             Some(&i) => i,
             None => {
@@ -312,6 +319,38 @@ impl Catalogo {
             },
         }
     }
+}
+
+fn aplicacion_ancestral(proceso: &Process, sys: &System) -> Option<Unidad> {
+    let mut actual = Some(proceso);
+    while let Some(p) = actual {
+        let ejecutable = p
+            .cmd()
+            .first()
+            .and_then(|c| Path::new(c).file_name())
+            .and_then(|n| n.to_str());
+        // El navegador de BookOS es firefox con `--name bookos-browser`: el
+        // ejecutable no coincide con ningún .desktop pero el nombre sí.
+        let nombre = p
+            .cmd()
+            .windows(2)
+            .find(|w| w[0] == "--name")
+            .and_then(|w| w[1].to_str());
+        let candidato = [ejecutable, nombre]
+            .into_iter()
+            .flatten()
+            .find(|id| buscar_desktop_exacto(id).is_some());
+        if let Some(id) = candidato {
+            return Some(Unidad {
+                clave: format!("ejecutable:{id}"),
+                clase: Clase::Aplicacion,
+                id: id.to_string(),
+                lanzada_por_usuario: true,
+            });
+        }
+        actual = p.parent().and_then(|pid| sys.process(pid));
+    }
+    None
 }
 
 fn clasificar(cgroup: &str) -> Unidad {
@@ -446,18 +485,19 @@ fn directorios_datos() -> Vec<PathBuf> {
 }
 
 fn buscar_desktop(id: &str) -> Option<PathBuf> {
+    if let Some(ruta) = buscar_desktop_exacto(id) {
+        return Some(ruta);
+    }
+    if let Some(nombre) = id.strip_prefix("com.bookos.") {
+        if let Some(ruta) = buscar_desktop_exacto(&format!("bookos-{nombre}")) {
+            return Some(ruta);
+        }
+    }
     let aplicaciones: Vec<PathBuf> = directorios_datos()
         .into_iter()
         .map(|d| d.join("applications"))
         .collect();
     let exacto = format!("{id}.desktop");
-    if let Some(ruta) = aplicaciones
-        .iter()
-        .map(|d| d.join(&exacto))
-        .find(|r| r.is_file())
-    {
-        return Some(ruta);
-    }
     // «dolphin» → org.kde.dolphin.desktop. Solo se llega aquí una vez por
     // unidad nueva, así que listar el directorio no se nota.
     let sufijo = format!(".{}", exacto.to_lowercase());
@@ -468,6 +508,13 @@ fn buscar_desktop(id: &str) -> Option<PathBuf> {
                 .is_some_and(|n| n.to_lowercase().ends_with(&sufijo))
         })
     })
+}
+
+fn buscar_desktop_exacto(id: &str) -> Option<PathBuf> {
+    directorios_datos()
+        .into_iter()
+        .map(|d| d.join("applications").join(format!("{id}.desktop")))
+        .find(|r| r.is_file())
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -529,7 +576,10 @@ fn resolver_icono(icono: &str, tema: Option<&str>) -> Option<String> {
         .collect();
     // Los temas KDE usan apps/48; los freedesktop, 48x48/apps. Del más nítido
     // al más pequeño que aún se ve bien a 22 px con densidad 2.
-    const CARPETAS: [&str; 8] = [
+    // Los iconos de BookOS en hicolor solo existen a 512x512 (medido: no hay
+    // 48/64/128 de bookos-settings ni de bookos-system-monitor), así que va el
+    // último: preferimos cualquier tamaño menor antes que cargar un PNG grande.
+    const CARPETAS: [&str; 9] = [
         "scalable/apps",
         "apps/scalable",
         "48x48/apps",
@@ -538,6 +588,7 @@ fn resolver_icono(icono: &str, tema: Option<&str>) -> Option<String> {
         "128x128/apps",
         "256x256/apps",
         "32x32/apps",
+        "512x512/apps",
     ];
     let temas = tema.into_iter().chain(["breeze", "hicolor"]);
     for tema in temas {

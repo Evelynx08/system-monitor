@@ -14,12 +14,12 @@ use sysinfo::{DiskRefreshKind, Disks, Networks};
 #[derive(Serialize)]
 pub struct Cpu {
     modelo: String,
-    uso: f32,
+    pub(crate) uso: f32,
     usuario: f32,
     sistema: f32,
     nucleos: Vec<f32>,
     frecuencia_mhz: Option<u32>,
-    temperatura: Option<f32>,
+    pub(crate) temperatura: Option<f32>,
     carga: [f32; 3],
     procesos: usize,
     hilos: usize,
@@ -28,8 +28,8 @@ pub struct Cpu {
 
 #[derive(Serialize)]
 pub struct Ram {
-    total: u64,
-    usada: u64,
+    pub(crate) total: u64,
+    pub(crate) usada: u64,
     disponible: u64,
     cache: u64,
     comprimida: Option<u64>,
@@ -453,16 +453,29 @@ fn es_virtual(nombre: &str) -> bool {
 }
 
 fn sensor_cpu() -> Option<PathBuf> {
-    // Del más fiable al que menos: coretemp y k10temp miden el encapsulado;
-    // acpitz es una zona térmica genérica que a veces ni es la CPU.
-    const NOMBRES: [&str; 5] = ["coretemp", "k10temp", "zenpower", "cpu_thermal", "acpitz"];
+    // acpitz puede medir otra zona de la placa; sin sensor identificable es
+    // preferible mostrar «—» a atribuirle esa temperatura a la CPU.
+    const NOMBRES: [&str; 4] = ["coretemp", "k10temp", "zenpower", "cpu_thermal"];
     fs::read_dir("/sys/class/hwmon")
         .ok()?
         .flatten()
         .filter_map(|e| {
             let nombre = fs::read_to_string(e.path().join("name")).ok()?;
             let prioridad = NOMBRES.iter().position(|n| *n == nombre.trim())?;
-            let ruta = e.path().join("temp1_input");
+            let chip = e.path();
+            let ruta = if nombre.trim() == "k10temp" {
+                let die = chip.join("temp2_label");
+                if fs::read_to_string(die)
+                    .ok()
+                    .is_some_and(|s| s.trim() == "Tdie")
+                {
+                    chip.join("temp2_input")
+                } else {
+                    chip.join("temp1_input")
+                }
+            } else {
+                chip.join("temp1_input")
+            };
             ruta.exists().then_some((prioridad, ruta))
         })
         .min_by_key(|(p, _)| *p)

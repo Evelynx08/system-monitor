@@ -19,9 +19,9 @@ pub enum Estado {
 
 #[derive(Serialize, Debug)]
 pub struct Bateria {
-    porcentaje: f32,
+    pub(crate) porcentaje: f32,
     estado: Estado,
-    conectado: bool,
+    pub(crate) conectado: bool,
     salud: Option<f32>,
     ciclos: Option<u32>,
     potencia_w: Option<f32>,

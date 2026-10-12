@@ -15,7 +15,7 @@ use serde::Serialize;
 pub struct Gpu {
     nombre: String,
     controlador: String,
-    uso: Option<f32>,
+    pub(crate) uso: Option<f32>,
     frecuencia_mhz: Option<u32>,
     frecuencia_max_mhz: Option<u32>,
     vram_usada: Option<u64>,

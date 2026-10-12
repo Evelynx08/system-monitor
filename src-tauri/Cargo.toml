@@ -16,6 +16,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Sin "multithread": rayon levanta un hilo por núcleo que se queda vivo toda la
 # vida de la app, y aquí se lee /proc una vez cada pocos segundos.
+# Isla de actividades de BookOS (org.bookos.Desktop); el mismo cliente que usan
+# bookos-clock, Player y la grabadora. Aquí solo el bloqueante: el hilo de
+# muestreo no usa tokio.
+zbus = "5"
 sysinfo = { version = "0.33", default-features = false, features = ["system", "disk", "network"] }
 
 # Para apagar el zoom por pellizco de WebKitGTK (ver main.rs). Es la misma

@@ -21,8 +21,8 @@ package() {
 
   install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/bookos-system-monitor.desktop" <<EOF
 [Desktop Entry]
-Name=Monitor del Sistema
-Name[en]=System Monitor
+Name=System Monitor
+Name[es]=Monitor del sistema
 Comment=CPU, GPU, memoria, disco, red, batería y procesos
 Exec=bookos-system-monitor
 Icon=bookos-system-monitor
